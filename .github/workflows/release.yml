@@ -1,0 +1,264 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  APP_NAME: fast-md
+  GO_VERSION: '1.25.x'
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+            arch: amd64
+            ext: ''
+          - os: windows-latest
+            platform: windows
+            arch: amd64
+            ext: '.exe'
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+            ext: ''
+          - os: macos-latest
+            platform: darwin
+            arch: amd64
+            ext: ''
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            libgtk-4-dev \
+            libwebkitgtk-6.0-dev \
+            libsoup-3.0-dev
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci --include=dev --production=false
+
+      - name: Generate Wails bindings
+        run: wails3 generate bindings -f '-tags production' -clean=true -ts
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          node node_modules/vue-tsc/bin/vue-tsc.js
+          node node_modules/vite/bin/vite.js build --mode production
+
+      - name: Verify frontend dist exists
+        run: test -d frontend/dist && test -f frontend/dist/index.html
+
+      - name: Build binary
+        shell: bash
+        env:
+          CGO_ENABLED: 1
+          GOOS: ${{ matrix.platform }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          out_dir="dist/${APP_NAME}-${GITHUB_REF_NAME}-${GOOS}-${GOARCH}"
+          mkdir -p "${out_dir}"
+          go build -ldflags="-s -w" -o "${out_dir}/${APP_NAME}${{ matrix.ext }}" .
+          ls -la "${out_dir}/"
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ env.APP_NAME }}-${{ github.ref_name }}-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist/${{ env.APP_NAME }}-${{ github.ref_name }}-${{ matrix.platform }}-${{ matrix.arch }}/${{ env.APP_NAME }}${{ matrix.ext }}
+          if-no-files-found: error
+
+  package-macos:
+    name: Package macOS DMG
+    needs: build
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: ${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-*
+          path: dist
+
+      - name: Create universal binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          arm64_dir="dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-arm64"
+          amd64_dir="dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-amd64"
+          universal_dir="dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-universal"
+          mkdir -p "${universal_dir}"
+          lipo -create -output "${universal_dir}/${APP_NAME}" \
+            "${arm64_dir}/${APP_NAME}" \
+            "${amd64_dir}/${APP_NAME}"
+
+      - name: Create app bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          app_dir="/tmp/${APP_NAME}.app"
+          rm -rf "${app_dir}"
+          mkdir -p "${app_dir}/Contents/MacOS" "${app_dir}/Contents/Resources"
+
+          cp "dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-universal/${APP_NAME}" "${app_dir}/Contents/MacOS/${APP_NAME}"
+          chmod +x "${app_dir}/Contents/MacOS/${APP_NAME}"
+
+          if [ -f "build/darwin/icons.icns" ]; then
+            cp "build/darwin/icons.icns" "${app_dir}/Contents/Resources/app.icns"
+          fi
+
+          cat > "${app_dir}/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleExecutable</key>
+              <string>${APP_NAME}</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.fastmd.${APP_NAME}</string>
+              <key>CFBundleName</key>
+              <string>${APP_NAME}</string>
+              <key>CFBundleDisplayName</key>
+              <string>Fast MD</string>
+              <key>CFBundleIconFile</key>
+              <string>app.icns</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${version}</string>
+              <key>CFBundleVersion</key>
+              <string>${GITHUB_RUN_NUMBER}</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>10.15</string>
+              <key>NSPrincipalClass</key>
+              <string>NSApplication</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Create DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          volume_dir="/tmp/${APP_NAME}-dmg"
+          rm -rf "${volume_dir}"
+          mkdir -p "${volume_dir}"
+          cp -R "/tmp/${APP_NAME}.app" "${volume_dir}/"
+          ln -s /Applications "${volume_dir}/Applications"
+          hdiutil create \
+            -volname "Fast MD" \
+            -srcfolder "${volume_dir}" \
+            -ov \
+            -format UDZO \
+            -fs HFS+ \
+            -scrub \
+            "dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-universal/${APP_NAME}-${GITHUB_REF_NAME}-darwin-universal.dmg"
+
+      - name: Verify DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg_path="dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-universal/${APP_NAME}-${GITHUB_REF_NAME}-darwin-universal.dmg"
+          hdiutil verify "${dmg_path}"
+          mount_dir="/tmp/${APP_NAME}-verify"
+          rm -rf "${mount_dir}"
+          mkdir -p "${mount_dir}"
+          hdiutil attach "${dmg_path}" -readonly -nobrowse -mountpoint "${mount_dir}"
+          test -d "${mount_dir}/${APP_NAME}.app"
+          hdiutil detach "${mount_dir}"
+          shasum -a 256 "${dmg_path}"
+
+      - name: Upload macOS package artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-universal
+          path: dist/${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-universal/${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-universal.dmg
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs:
+      - build
+      - package-macos
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: release-assets
+
+      - name: Rename artifacts to expected names
+        shell: bash
+        run: |
+          cd release-assets
+          # Linux
+          mkdir -p linux-amd64
+          mv ${{ env.APP_NAME }}-${{ github.ref_name }}-linux-amd64/fast-md linux-amd64/fast-md-${{ github.ref_name }}-linux-amd64
+          # Windows
+          mkdir -p windows-amd64
+          mv ${{ env.APP_NAME }}-${{ github.ref_name }}-windows-amd64/fast-md.exe windows-amd64/fast-md-${{ github.ref_name }}-windows-amd64.exe
+          # macOS
+          mkdir -p darwin-universal
+          mv ${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-universal/*.dmg darwin-universal/fast-md-${{ github.ref_name }}-darwin-universal.dmg
+          ls -la */
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            release-assets/linux-amd64/fast-md-${{ github.ref_name }}-linux-amd64
+            release-assets/windows-amd64/fast-md-${{ github.ref_name }}-windows-amd64.exe
+            release-assets/darwin-universal/fast-md-${{ github.ref_name }}-darwin-universal.dmg
