@@ -169,6 +169,17 @@ func Run(assets fs.FS) error {
 
 	Service = &AppService{}
 
+	// The recent-files store is created here (not lazily) because the
+	// dock menu is built further down and wants the persisted list on
+	// first launch. A load failure (corrupt file, permission denied)
+	// falls back to an empty list — the user's recents are a nice-to-
+	// have, not load-bearing.
+	if store, err := newRecentFilesStore(recentFilesPath()); err != nil {
+		log.Printf("recent files store init failed: %v", err)
+	} else {
+		Service.recent = store
+	}
+
 	app := application.New(application.Options{
 		Name:        "fast-md",
 		Description: "A fast Markdown editor",

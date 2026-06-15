@@ -10,17 +10,9 @@ extern void updateDockRecentFiles(const char **paths, int count);
 import "C"
 import (
 	"path/filepath"
-	"strings"
-	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
-)
-
-var (
-	recentFiles   []string
-	recentFilesMu sync.Mutex
-	maxRecent     = 10
 )
 
 //export dockMenuNewWindow
@@ -56,13 +48,8 @@ func dockMenuOpenRecent(cpath *C.char) {
 	}
 	// Recent files are paths the user has previously opened in this app,
 	// so re-opening one is implicit consent to access its directory again.
-	if err := Service.trustDir(filepath.Dir(path)); err != nil {
-		// Not fatal — the file just won't open. Log so the user has a
-		// hint if they wonder why nothing happened.
-		// (stderr is fine here; main runs in a console-less environment
-		// and these are exceptional.)
-		_ = err
-	}
+	// Best-effort; a failure means the file just won't open, not a crash.
+	_ = Service.trustDir(filepath.Dir(path))
 	go func() {
 		if w := Service.app.Window.Current(); w != nil {
 			w.EmitEvent("file:open", path)
@@ -70,49 +57,56 @@ func dockMenuOpenRecent(cpath *C.char) {
 			NewEditorWindowWithFile(Service.app, path)
 		}
 	}()
-	trackRecentFile(path)
+	// Do NOT call trackRecentFile here. The file:open / ReadFile path
+	// already records the path on a successful open, so calling it
+	// upfront would add ghost entries for files that no longer exist,
+	// were moved, or have their permissions revoked.
 }
 
+// trackRecentFile is the public hook AppService.ReadFile calls after a
+// successful read. It updates the persisted store and refreshes the
+// dock menu in one shot.
 func trackRecentFile(path string) {
-	lower := strings.ToLower(path)
-	if !strings.HasSuffix(lower, ".md") && !strings.HasSuffix(lower, ".markdown") {
+	if Service == nil || Service.recent == nil {
 		return
 	}
-
-	recentFilesMu.Lock()
-	for i, p := range recentFiles {
-		if p == path {
-			recentFiles = append(recentFiles[:i], recentFiles[i+1:]...)
-			break
-		}
+	snapshot, err := Service.recent.Add(path)
+	if err != nil {
+		// Persistence failure shouldn't break the read — the in-memory
+		// list is still consistent and the next save will retry.
+		// (Stderr is the best we can do without bringing in a logger.)
+		_ = err
 	}
-	recentFiles = append([]string{path}, recentFiles...)
-	if len(recentFiles) > maxRecent {
-		recentFiles = recentFiles[:maxRecent]
-	}
-	recentFilesMu.Unlock()
-
-	updateDockRecentMenu()
+	updateDockRecentMenu(snapshot)
 }
 
-func updateDockRecentMenu() {
-	recentFilesMu.Lock()
-	paths := make([]*C.char, len(recentFiles))
-	for i, p := range recentFiles {
-		paths[i] = C.CString(p)
-	}
-	count := C.int(len(recentFiles))
-	recentFilesMu.Unlock()
-
-	if len(paths) > 0 {
-		C.updateDockRecentFiles(&paths[0], count)
-	} else {
+// updateDockRecentMenu pushes the given snapshot to the native dock
+// menu. Passing the snapshot as a parameter (rather than reading from
+// a package-level global) means the call site is the only place that
+// decides which list to display, and the C interop works from a stable
+// slice without any lock held.
+func updateDockRecentMenu(paths []string) {
+	if len(paths) == 0 {
 		C.updateDockRecentFiles(nil, 0)
+		return
 	}
-	// C strings are freed by updateDockRecentFiles after copying
+	// C.CString allocates with malloc; the Obj-C side frees each entry
+	// after copying it into NSString. The Go slice itself stays alive
+	// for the duration of the C call (cgo pins it), so passing
+	// &cstrings[0] is safe.
+	cstrings := make([]*C.char, len(paths))
+	for i, p := range paths {
+		cstrings[i] = C.CString(p)
+	}
+	C.updateDockRecentFiles(&cstrings[0], C.int(len(cstrings)))
 }
 
 func setupDockMenu() {
 	C.setupDockMenu()
-	updateDockRecentMenu()
+	// Populate the dock menu from the persisted store. Service.recent
+	// is initialized in Run() before this is called, so the user's
+	// history from the previous session is on screen immediately.
+	if Service != nil && Service.recent != nil {
+		updateDockRecentMenu(Service.recent.Snapshot())
+	}
 }

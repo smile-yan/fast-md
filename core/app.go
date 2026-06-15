@@ -73,6 +73,11 @@ type AppService struct {
 	rootsOnce sync.Once
 	rootsMu   sync.RWMutex
 	roots     map[string]*os.Root
+
+	// recent is the persisted recently-opened-files store. It is created
+	// in Run() before the dock menu is built so the dock menu reflects
+	// the user's history from the previous session on first launch.
+	recent *recentFilesStore
 }
 
 func (s *AppService) focusedWindow() application.Window {
