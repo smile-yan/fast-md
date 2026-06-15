@@ -105,7 +105,7 @@ jobs:
           if-no-files-found: error
 
   package-macos:
-    name: Package macOS app
+    name: Package macOS apps
     needs: build
     runs-on: macos-latest
 
@@ -119,85 +119,73 @@ jobs:
           pattern: ${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-*
           path: dist
 
-      - name: Create universal binary
-        shell: bash
-        run: |
-          set -euo pipefail
-          arm64_dir="dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-arm64"
-          amd64_dir="dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-amd64"
-          universal_dir="dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-universal"
-          mkdir -p "${universal_dir}"
-          lipo -create -output "${universal_dir}/${APP_NAME}" \
-            "${arm64_dir}/${APP_NAME}" \
-            "${amd64_dir}/${APP_NAME}"
-
-      - name: Create app bundle
+      - name: Create per-arch app bundles and zips
         shell: bash
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
-          app_dir="/tmp/${APP_NAME}.app"
-          rm -rf "${app_dir}"
-          mkdir -p "${app_dir}/Contents/MacOS" "${app_dir}/Contents/Resources"
 
-          cp "dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-universal/${APP_NAME}" "${app_dir}/Contents/MacOS/${APP_NAME}"
-          chmod +x "${app_dir}/Contents/MacOS/${APP_NAME}"
+          for arch in arm64 amd64; do
+            bin_dir="dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-${arch}"
+            app_dir="/tmp/${APP_NAME}-${arch}.app"
+            dist_dir="dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-${arch}-pkg"
 
-          if [ -f "build/darwin/icons.icns" ]; then
-            cp "build/darwin/icons.icns" "${app_dir}/Contents/Resources/app.icns"
-          fi
+            rm -rf "${app_dir}" "${dist_dir}"
+            mkdir -p "${app_dir}/Contents/MacOS" "${app_dir}/Contents/Resources" "${dist_dir}"
 
-          cat > "${app_dir}/Contents/Info.plist" <<PLIST
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleExecutable</key>
-              <string>${APP_NAME}</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.fastmd.${APP_NAME}</string>
-              <key>CFBundleName</key>
-              <string>${APP_NAME}</string>
-              <key>CFBundleDisplayName</key>
-              <string>Fast MD</string>
-              <key>CFBundleIconFile</key>
-              <string>app.icns</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>${version}</string>
-              <key>CFBundleVersion</key>
-              <string>${GITHUB_RUN_NUMBER}</string>
-              <key>LSMinimumSystemVersion</key>
-              <string>10.15</string>
-              <key>NSPrincipalClass</key>
-              <string>NSApplication</string>
-          </dict>
-          </plist>
-          PLIST
+            cp "${bin_dir}/${APP_NAME}" "${app_dir}/Contents/MacOS/${APP_NAME}"
+            chmod +x "${app_dir}/Contents/MacOS/${APP_NAME}"
 
-      - name: Create app zip
-        shell: bash
-        run: |
-          set -euo pipefail
-          app_dir="/tmp/${APP_NAME}.app"
-          dist_dir="dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-universal"
-          mkdir -p "${dist_dir}"
-          (cd /tmp && zip -r -9 "${GITHUB_WORKSPACE}/${dist_dir}/${APP_NAME}-${GITHUB_REF_NAME}-darwin-universal.app.zip" "${APP_NAME}.app")
+            if [ -f "build/darwin/icons.icns" ]; then
+              cp "build/darwin/icons.icns" "${app_dir}/Contents/Resources/app.icns"
+            fi
 
-      - name: Verify app zip
-        shell: bash
-        run: |
-          set -euo pipefail
-          zip_path="dist/${APP_NAME}-${GITHUB_REF_NAME}-darwin-universal/${APP_NAME}-${GITHUB_REF_NAME}-darwin-universal.app.zip"
-          unzip -t "${zip_path}"
-          shasum -a 256 "${zip_path}"
+            cat > "${app_dir}/Contents/Info.plist" <<PLIST
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>CFBundleExecutable</key>
+                <string>${APP_NAME}</string>
+                <key>CFBundleIdentifier</key>
+                <string>com.fastmd.${APP_NAME}</string>
+                <key>CFBundleName</key>
+                <string>${APP_NAME}</string>
+                <key>CFBundleDisplayName</key>
+                <string>Fast MD</string>
+                <key>CFBundleIconFile</key>
+                <string>app.icns</string>
+                <key>CFBundlePackageType</key>
+                <string>APPL</string>
+                <key>CFBundleShortVersionString</key>
+                <string>${version}</string>
+                <key>CFBundleVersion</key>
+                <string>${GITHUB_RUN_NUMBER}</string>
+                <key>LSMinimumSystemVersion</key>
+                <string>10.15</string>
+                <key>NSPrincipalClass</key>
+                <string>NSApplication</string>
+            </dict>
+            </plist>
+            PLIST
 
-      - name: Upload macOS package artifact
+            (cd /tmp && zip -r -9 "${GITHUB_WORKSPACE}/${dist_dir}/${APP_NAME}-${GITHUB_REF_NAME}-darwin-${arch}.app.zip" "${APP_NAME}-${arch}.app")
+            unzip -t "${dist_dir}/${APP_NAME}-${GITHUB_REF_NAME}-darwin-${arch}.app.zip"
+            shasum -a 256 "${dist_dir}/${APP_NAME}-${GITHUB_REF_NAME}-darwin-${arch}.app.zip"
+          done
+
+      - name: Upload macOS arm64 package artifact
         uses: actions/upload-artifact@v6
         with:
-          name: ${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-universal
-          path: dist/${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-universal/${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-universal.app.zip
+          name: ${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-arm64-pkg
+          path: dist/${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-arm64-pkg/${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-arm64.app.zip
+          if-no-files-found: error
+
+      - name: Upload macOS amd64 package artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-amd64-pkg
+          path: dist/${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-amd64-pkg/${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-amd64.app.zip
           if-no-files-found: error
 
   release:
@@ -235,9 +223,10 @@ jobs:
           mkdir -p windows-amd64
           mv ${{ env.APP_NAME }}-${{ github.ref_name }}-windows-amd64/fast-md.exe windows-amd64/fast-md.exe
           (cd windows-amd64 && zip -9 fast-md-${{ github.ref_name }}-windows-amd64.zip fast-md.exe && rm fast-md.exe)
-          # macOS: app bundle is already compressed as .zip
-          mkdir -p darwin-universal
-          mv ${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-universal/*.zip darwin-universal/fast-md-${{ github.ref_name }}-darwin-universal.app.zip
+          # macOS: app bundles are already compressed as .zip
+          mkdir -p darwin-arm64 darwin-amd64
+          mv ${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-arm64-pkg/*.zip darwin-arm64/fast-md-${{ github.ref_name }}-darwin-arm64.app.zip
+          mv ${{ env.APP_NAME }}-${{ github.ref_name }}-darwin-amd64-pkg/*.zip darwin-amd64/fast-md-${{ github.ref_name }}-darwin-amd64.app.zip
           ls -la */
 
       - name: Create draft release
@@ -248,4 +237,5 @@ jobs:
           files: |
             release-assets/linux-amd64/fast-md-${{ github.ref_name }}-linux-amd64.tar.gz
             release-assets/windows-amd64/fast-md-${{ github.ref_name }}-windows-amd64.zip
-            release-assets/darwin-universal/fast-md-${{ github.ref_name }}-darwin-universal.app.zip
+            release-assets/darwin-arm64/fast-md-${{ github.ref_name }}-darwin-arm64.app.zip
+            release-assets/darwin-amd64/fast-md-${{ github.ref_name }}-darwin-amd64.app.zip
