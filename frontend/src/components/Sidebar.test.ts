@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../../bindings/changeme/appservice', () => ({
+vi.mock('../../bindings/changeme/core/appservice', () => ({
   ListDirectory: vi.fn(),
   OpenFolderDialog: vi.fn(),
 }))

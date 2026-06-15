@@ -17,7 +17,7 @@ vi.mock('@wailsio/runtime', () => ({
   },
 }))
 
-vi.mock('../bindings/changeme/appservice', () => ({
+vi.mock('../bindings/changeme/core/appservice', () => ({
   CancelQuit: vi.fn(),
   CloseWindow: vi.fn(),
   ConfirmQuitWindow: vi.fn(),
@@ -62,7 +62,7 @@ describe('App source mode', () => {
   })
 
   it('saves edits made in source mode without requiring a mode toggle first', async () => {
-    const bindings = await import('../bindings/changeme/appservice')
+    const bindings = await import('../bindings/changeme/core/appservice')
     vi.mocked(bindings.ReadFile).mockResolvedValue('# Original')
     vi.mocked(bindings.WriteFile).mockResolvedValue(undefined)
 
@@ -102,7 +102,7 @@ describe('App source mode', () => {
   })
 
   it('does not open an external file over unsaved changes when the user cancels', async () => {
-    const bindings = await import('../bindings/changeme/appservice')
+    const bindings = await import('../bindings/changeme/core/appservice')
     vi.mocked(bindings.ReadFile)
       .mockResolvedValueOnce('# Original')
       .mockResolvedValueOnce('# External')
@@ -120,7 +120,7 @@ describe('App source mode', () => {
   })
 
   it('confirms a coordinated quit window without directly quitting the app', async () => {
-    const bindings = await import('../bindings/changeme/appservice')
+    const bindings = await import('../bindings/changeme/core/appservice')
 
     const { default: App } = await import('./App.vue')
     mount(App)
@@ -132,7 +132,7 @@ describe('App source mode', () => {
   })
 
   it('cancels coordinated quit when the user cancels an unsaved close prompt', async () => {
-    const bindings = await import('../bindings/changeme/appservice')
+    const bindings = await import('../bindings/changeme/core/appservice')
     vi.mocked(bindings.ReadFile).mockResolvedValue('# Original')
     vi.mocked(bindings.ShowSaveDialog).mockResolvedValue('cancel')
 

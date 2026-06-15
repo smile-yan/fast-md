@@ -1,6 +1,6 @@
 //go:build darwin
 
-package main
+package core
 
 /*
 #cgo CFLAGS: -mmacosx-version-min=12.0 -x objective-c

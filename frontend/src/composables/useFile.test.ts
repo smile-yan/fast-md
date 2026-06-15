@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('../../bindings/changeme/appservice', () => ({
+vi.mock('../../bindings/changeme/core/appservice', () => ({
   OpenFileDialog: vi.fn(),
   SaveFileDialog: vi.fn(),
   ReadFile: vi.fn(),
@@ -30,7 +30,7 @@ describe('useFile', () => {
   })
 
   it('openFile reads file and clears dirty', async () => {
-    const bindings = await import('../../bindings/changeme/appservice')
+    const bindings = await import('../../bindings/changeme/core/appservice')
     vi.mocked(bindings.OpenFileDialog).mockResolvedValue('/tmp/test.md')
     vi.mocked(bindings.ReadFile).mockResolvedValue('# Content')
     const { useFile } = await import('./useFile')
@@ -42,7 +42,7 @@ describe('useFile', () => {
   })
 
   it('saveFile writes to current path', async () => {
-    const bindings = await import('../../bindings/changeme/appservice')
+    const bindings = await import('../../bindings/changeme/core/appservice')
     vi.mocked(bindings.WriteFile).mockResolvedValue(undefined)
     const { useFile, setContent } = await import('./useFile')
     const { filePath, saveFile } = useFile()
@@ -53,7 +53,7 @@ describe('useFile', () => {
   })
 
   it('saveFile calls SaveFileDialog when no path', async () => {
-    const bindings = await import('../../bindings/changeme/appservice')
+    const bindings = await import('../../bindings/changeme/core/appservice')
     vi.mocked(bindings.SaveFileDialog).mockResolvedValue('/tmp/new.md')
     vi.mocked(bindings.WriteFile).mockResolvedValue(undefined)
     const { useFile, setContent } = await import('./useFile')
@@ -66,7 +66,7 @@ describe('useFile', () => {
 
   it('auto saves existing files every 10 seconds by default', async () => {
     vi.useFakeTimers()
-    const bindings = await import('../../bindings/changeme/appservice')
+    const bindings = await import('../../bindings/changeme/core/appservice')
     vi.mocked(bindings.WriteFile).mockResolvedValue(undefined)
 
     const { useFile, setContent } = await import('./useFile')

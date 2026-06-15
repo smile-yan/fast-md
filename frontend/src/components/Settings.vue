@@ -169,7 +169,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
 import { useLocale } from '../composables/useLocale'
-import { SaveConfig, RestartApp } from '../../bindings/changeme/appservice'
+import { SaveConfig, RestartApp } from '../../bindings/changeme/core/appservice'
 
 const emit = defineEmits<{
   close: []

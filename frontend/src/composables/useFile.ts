@@ -5,7 +5,7 @@ import {
   OpenFolderDialog,
   ReadFile,
   WriteFile,
-} from '../../bindings/changeme/appservice'
+} from '../../bindings/changeme/core/appservice'
 import { useLocale } from './useLocale'
 
 const filePath = ref<string>('')

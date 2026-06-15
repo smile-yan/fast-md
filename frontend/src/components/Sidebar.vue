@@ -51,7 +51,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useLocale } from '../composables/useLocale'
-import { ListDirectory, OpenFolderDialog } from '../../bindings/changeme/appservice'
+import { ListDirectory, OpenFolderDialog } from '../../bindings/changeme/core/appservice'
 
 const { t } = useLocale()
 

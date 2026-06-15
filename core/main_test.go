@@ -1,6 +1,7 @@
-package main
+package core
 
 import (
+	"io/fs"
 	"os"
 	"reflect"
 	"strings"
@@ -8,6 +9,25 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
+
+// TestMain wires the bundled frontend/help assets into the package-level
+// FS variables so tests that exercise menu building and help materialization
+// don't have to set them up individually. The frontend FS keeps the
+// "frontend/dist/..." prefix because loadThemes reads from that path; the
+// help FS is rooted at "docs/help" because materializeHelpDocument reads
+// bare filenames. Missing assets are silently ignored — those tests will
+// skip or fail with a clear "assets not initialized" message.
+func TestMain(m *testing.M) {
+	if dir, err := os.Stat("../frontend/dist"); err == nil && dir.IsDir() {
+		assetsFS = os.DirFS("..")
+	}
+	if dir, err := os.Stat("../docs/help"); err == nil && dir.IsDir() {
+		if sub, err := fs.Sub(os.DirFS(".."), "docs/help"); err == nil {
+			helpDocumentFS = sub
+		}
+	}
+	os.Exit(m.Run())
+}
 
 type fakeOpenedFileWindow struct {
 	eventName string
@@ -31,7 +51,7 @@ func (w *fakeFullscreenWindow) ToggleFullscreen() {
 func TestToggleFocusedFullscreenUsesNativeWindowFullscreen(t *testing.T) {
 	window := &fakeFullscreenWindow{}
 
-	toggleFocusedFullscreen(window)
+	ToggleFocusedFullscreen(window)
 
 	if window.toggleCount != 1 {
 		t.Fatalf("expected native fullscreen toggle to be called once, got %d", window.toggleCount)
@@ -39,7 +59,7 @@ func TestToggleFocusedFullscreenUsesNativeWindowFullscreen(t *testing.T) {
 }
 
 func TestToggleFocusedFullscreenIgnoresMissingWindow(t *testing.T) {
-	toggleFocusedFullscreen(nil)
+	ToggleFocusedFullscreen(nil)
 }
 
 func TestShortcutAcceleratorsMatchTyporaMacOS(t *testing.T) {
@@ -57,7 +77,7 @@ func TestShortcutAcceleratorsMatchTyporaMacOS(t *testing.T) {
 
 func TestDeveloperToolsShortcutRegisteredAsGlobalKeyBinding(t *testing.T) {
 	app := application.New(application.Options{Name: "fast-md-test"})
-	registerDeveloperToolsShortcut(app)
+	RegisterDeveloperToolsShortcut(app)
 
 	assertKeyBindingRegistered(t, app, "F12")
 }
@@ -268,7 +288,7 @@ func TestRouteOpenedFileEmitsFileOpenToCurrentWindow(t *testing.T) {
 	window := &fakeOpenedFileWindow{}
 	openedNew := false
 
-	routeOpenedFile("/tmp/new.md", window, func(string) {
+	RouteOpenedFile("/tmp/new.md", window, func(string) {
 		openedNew = true
 	})
 
@@ -286,7 +306,7 @@ func TestRouteOpenedFileEmitsFileOpenToCurrentWindow(t *testing.T) {
 func TestRouteOpenedFileCreatesWindowWhenNoCurrentWindow(t *testing.T) {
 	var openedPath string
 
-	routeOpenedFile("/tmp/new.md", nil, func(path string) {
+	RouteOpenedFile("/tmp/new.md", nil, func(path string) {
 		openedPath = path
 	})
 
@@ -299,7 +319,7 @@ func TestRouteOpenedFileIgnoresEmptyPath(t *testing.T) {
 	window := &fakeOpenedFileWindow{}
 	openedNew := false
 
-	routeOpenedFile("", window, func(string) {
+	RouteOpenedFile("", window, func(string) {
 		openedNew = true
 	})
 

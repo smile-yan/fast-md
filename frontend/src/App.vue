@@ -57,7 +57,7 @@ import { useTheme } from './composables/useTheme'
 import { useContentTheme } from './composables/useContentTheme'
 import { useLocale } from './composables/useLocale'
 import { buildMarkdownExportHtml } from './exportHtml'
-import { CancelQuit, CloseWindow, ConfirmQuitWindow, ShowSaveDialog, ShowCloseSheet, ExportPDF } from '../bindings/changeme/appservice'
+import { CancelQuit, CloseWindow, ConfirmQuitWindow, ShowSaveDialog, ShowCloseSheet, ExportPDF } from '../bindings/changeme/core/appservice'
 
 const { filePath, content, isDirty, saveStatus, newFile, openFile, saveFile, saveAs, saveToPath, resetFile } = useFile()
 const { t } = useLocale()

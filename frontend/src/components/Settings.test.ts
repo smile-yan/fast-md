@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../../bindings/changeme/appservice', () => ({
+vi.mock('../../bindings/changeme/core/appservice', () => ({
   RestartApp: vi.fn(),
   SaveConfig: vi.fn(),
 }))
@@ -63,7 +63,7 @@ describe('Settings content theme', () => {
   })
 
   it('uses localized restart confirmation when changing language', async () => {
-    const bindings = await import('../../bindings/changeme/appservice')
+    const bindings = await import('../../bindings/changeme/core/appservice')
     vi.mocked(bindings.SaveConfig).mockResolvedValue(undefined)
     vi.spyOn(window, 'confirm').mockReturnValue(false)
 

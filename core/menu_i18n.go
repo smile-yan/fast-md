@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"runtime"
@@ -150,11 +150,11 @@ func buildMenuI18n(app *application.App) {
 		})
 		appMenu.AddSeparator()
 		appMenu.Add(ms.preferences).SetAccelerator("Cmd+,").OnClick(func(_ *application.Context) {
-			emitToFocused(app, "menu:settings")
+			EmitToFocused(app, "menu:settings")
 		})
 		appMenu.AddSeparator()
 		appMenu.Add(ms.quit).SetAccelerator("Cmd+Q").OnClick(func(_ *application.Context) {
-			requestAppQuit()
+			RequestAppQuit()
 		})
 	} else {
 		helpMenu := menu.AddSubmenu(ms.help)
@@ -163,31 +163,31 @@ func buildMenuI18n(app *application.App) {
 
 	fileMenu := menu.AddSubmenu(ms.file)
 	setMenuIcon(fileMenu.Add(ms.newFile).SetAccelerator("CmdOrCtrl+N").OnClick(func(_ *application.Context) {
-		emitToFocused(app, "menu:newFile")
+		EmitToFocused(app, "menu:newFile")
 	}), menuIconNewFile)
 	setMenuIcon(fileMenu.Add(ms.newWindow).SetAccelerator("CmdOrCtrl+Shift+N").OnClick(func(_ *application.Context) {
-		newEditorWindow(app)
+		NewEditorWindow(app)
 	}), menuIconNewWindow)
 	setMenuIcon(fileMenu.Add(ms.open).SetAccelerator("CmdOrCtrl+O").OnClick(func(_ *application.Context) {
-		emitToFocused(app, "menu:open")
+		EmitToFocused(app, "menu:open")
 	}), menuIconOpen)
 	fileMenu.AddSeparator()
 	setMenuIcon(fileMenu.Add(ms.save).SetAccelerator("CmdOrCtrl+S").OnClick(func(_ *application.Context) {
-		emitToFocused(app, "menu:save")
+		EmitToFocused(app, "menu:save")
 	}), menuIconSave)
 	setMenuIcon(fileMenu.Add(ms.saveAs).SetAccelerator("CmdOrCtrl+Shift+S").OnClick(func(_ *application.Context) {
-		emitToFocused(app, "menu:saveAs")
+		EmitToFocused(app, "menu:saveAs")
 	}), menuIconSaveAs)
 	fileMenu.AddSeparator()
 	setMenuIcon(fileMenu.Add(ms.exportHtml).OnClick(func(_ *application.Context) {
-		emitToFocused(app, "menu:exportHTML")
+		EmitToFocused(app, "menu:exportHTML")
 	}), menuIconExportHTML)
 	setMenuIcon(fileMenu.Add(ms.exportPdf).OnClick(func(_ *application.Context) {
-		emitToFocused(app, "menu:exportPDF")
+		EmitToFocused(app, "menu:exportPDF")
 	}), menuIconExportPDF)
 	fileMenu.AddSeparator()
 	setMenuIcon(fileMenu.Add(ms.quit).SetAccelerator("CmdOrCtrl+Q").OnClick(func(_ *application.Context) {
-		requestAppQuit()
+		RequestAppQuit()
 	}), menuIconQuit)
 
 	editorMenu := menu.AddSubmenu(ms.editor)
@@ -202,7 +202,7 @@ func buildMenuI18n(app *application.App) {
 
 	viewMenu := menu.AddSubmenu(ms.view)
 	setMenuIcon(viewMenu.Add(ms.toggleSidebar).SetAccelerator("CmdOrCtrl+Shift+L").OnClick(func(_ *application.Context) {
-		emitToFocused(app, "menu:toggleSidebar")
+		EmitToFocused(app, "menu:toggleSidebar")
 	}), menuIconSidebar)
 	viewMenu.AddSeparator()
 	themeMenu := viewMenu.AddSubmenu(ms.theme)
@@ -212,13 +212,13 @@ func buildMenuI18n(app *application.App) {
 			name := t.Name
 			label := t.Label
 			setMenuIcon(themeMenu.Add(label).OnClick(func(_ *application.Context) {
-				emitToFocused(app, "menu:setTheme", name)
+				EmitToFocused(app, "menu:setTheme", name)
 			}), menuIconTheme)
 		}
 	}
 	viewMenu.AddSeparator()
 	setMenuIcon(viewMenu.Add(ms.enterFullscreen).SetAccelerator("Ctrl+CmdOrCtrl+F").OnClick(func(_ *application.Context) {
-		toggleFocusedFullscreen(app.Window.Current())
+		ToggleFocusedFullscreen(app.Window.Current())
 	}), menuIconFullscreen)
 	viewMenu.AddSeparator()
 	setMenuIcon(viewMenu.Add(ms.developerTools).OnClick(func(_ *application.Context) {
@@ -230,6 +230,6 @@ func buildMenuI18n(app *application.App) {
 
 	app.Menu.Set(menu)
 	installConfiguredSystemMenuCleaners(ms.editor, ms.view)
-	installDeveloperToolsShortcutDisplay(ms.view, ms.developerTools, developerToolsShortcut)
+	installDeveloperToolsShortcutDisplay(ms.view, ms.developerTools, DeveloperToolsShortcut)
 	installCustomHelpMenu(ms.help)
 }

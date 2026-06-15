@@ -1,7 +1,6 @@
-package main
+package core
 
 import (
-	"embed"
 	"fmt"
 	"io/fs"
 	"log"
@@ -11,8 +10,11 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-//go:embed docs/help/*.md
-var helpDocumentFS embed.FS
+// helpDocumentFS is the FS that backs help document reads. It is initialized
+// by SetAssets to fs.Sub(assets, "docs/help"), so all paths inside it are
+// bare filenames ("quick-start.md", etc.).
+//
+// Declared in assets.go.
 
 type helpDocumentEntry struct {
 	label    string
@@ -45,7 +47,7 @@ func openHelpDocument(app *application.App, filename string) error {
 	if err != nil {
 		return err
 	}
-	newEditorWindowWithFile(app, path)
+	NewEditorWindowWithFile(app, path)
 	return nil
 }
 
@@ -61,9 +63,10 @@ func materializeHelpDocument(filename, outputDir string) (string, error) {
 	if filename == "" || filepath.Base(filename) != filename {
 		return "", fmt.Errorf("invalid help document filename %q", filename)
 	}
-
-	sourcePath := filepath.ToSlash(filepath.Join("docs", "help", filename))
-	data, err := fs.ReadFile(helpDocumentFS, sourcePath)
+	if helpDocumentFS == nil {
+		return "", fmt.Errorf("help document assets not initialized")
+	}
+	data, err := fs.ReadFile(helpDocumentFS, filename)
 	if err != nil {
 		return "", err
 	}

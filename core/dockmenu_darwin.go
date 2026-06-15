@@ -1,6 +1,6 @@
 //go:build darwin
 
-package main
+package core
 
 /*
 #include <stdlib.h>
@@ -24,22 +24,22 @@ var (
 
 //export dockMenuNewWindow
 func dockMenuNewWindow() {
-	if svc == nil || svc.app == nil {
+	if Service == nil || Service.app == nil {
 		return
 	}
-	go newEditorWindow(svc.app)
+	go NewEditorWindow(Service.app)
 }
 
 //export dockMenuOpenFile
 func dockMenuOpenFile() {
-	if svc == nil || svc.app == nil {
+	if Service == nil || Service.app == nil {
 		return
 	}
 	go func() {
-		if w := svc.app.Window.Current(); w != nil {
+		if w := Service.app.Window.Current(); w != nil {
 			w.EmitEvent("menu:open")
 		} else {
-			ww := newEditorWindow(svc.app)
+			ww := NewEditorWindow(Service.app)
 			ww.OnWindowEvent(events.Common.WindowRuntimeReady, func(_ *application.WindowEvent) {
 				ww.EmitEvent("menu:open")
 			})
@@ -50,14 +50,14 @@ func dockMenuOpenFile() {
 //export dockMenuOpenRecent
 func dockMenuOpenRecent(cpath *C.char) {
 	path := C.GoString(cpath)
-	if path == "" || svc == nil || svc.app == nil {
+	if path == "" || Service == nil || Service.app == nil {
 		return
 	}
 	go func() {
-		if w := svc.app.Window.Current(); w != nil {
+		if w := Service.app.Window.Current(); w != nil {
 			w.EmitEvent("file:open", path)
 		} else {
-			newEditorWindowWithFile(svc.app, path)
+			NewEditorWindowWithFile(Service.app, path)
 		}
 	}()
 	trackRecentFile(path)

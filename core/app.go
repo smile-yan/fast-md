@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -28,7 +28,9 @@ func getConfigPath() string {
 	return filepath.Join(home, "Library", "Application Support", "fast-md", "config.json")
 }
 
-func loadConfig() AppConfig {
+// LoadConfig reads the user's persisted config, falling back to defaults
+// when the file is missing or malformed.
+func LoadConfig() AppConfig {
 	path := getConfigPath()
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -44,7 +46,8 @@ func loadConfig() AppConfig {
 	return cfg
 }
 
-func saveConfig(cfg AppConfig) error {
+// SaveConfig writes the config to disk, creating the directory if needed.
+func SaveConfig(cfg AppConfig) error {
 	path := getConfigPath()
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -140,7 +143,7 @@ func (s *AppService) GetHomePath() string {
 
 func (s *AppService) CloseWindow() {
 	if w := s.focusedWindow(); w != nil {
-		allowWindowClose(w.ID())
+		AllowWindowClose(w.ID())
 		w.Close()
 	}
 }
@@ -200,11 +203,11 @@ func (s *AppService) RestartApp() {
 }
 
 func (s *AppService) GetConfig() AppConfig {
-	return loadConfig()
+	return LoadConfig()
 }
 
 func (s *AppService) SaveConfig(cfg AppConfig) error {
-	return saveConfig(cfg)
+	return SaveConfig(cfg)
 }
 
 func (s *AppService) ShowSaveDialog(filename string) string {
