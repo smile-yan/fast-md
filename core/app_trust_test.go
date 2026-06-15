@@ -294,3 +294,65 @@ func TestTrustDirRejectsFile(t *testing.T) {
 		t.Fatal("expected trustDir to fail on a non-directory")
 	}
 }
+
+// TestTrustDirAcceptsSymlinkToDirectory documents the documented
+// contract of os.OpenRoot (Go 1.24+): it follows symbolic links in the
+// directory name. trustDir mirrors that — a symlink that resolves to a
+// real directory is accepted and the root is registered.
+//
+// (The matching ReadFile assertion isn't included here because
+// resolveTrusted uses filepath.Rel on the registered symlink path; in
+// production callers hand trustDir paths returned by native dialogs,
+// which are always resolved real paths, so the symlink-keyed lookup is
+// not exercised end-to-end. Escape attempts through a real root are
+// covered by TestSymlinkEscapeIsBlockedByKernel.)
+func TestTrustDirAcceptsSymlinkToDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink semantics differ on Windows")
+	}
+	realDir := t.TempDir()
+	holder := t.TempDir()
+
+	link := filepath.Join(holder, "redirect")
+	if err := os.Symlink(realDir, link); err != nil {
+		t.Skipf("Symlink not supported in this environment: %v", err)
+	}
+
+	svc := &AppService{}
+	if err := svc.trustDir(link); err != nil {
+		t.Fatalf("trustDir on a symlink-to-directory should succeed, got %v", err)
+	}
+
+	// And critically, the trusted root must be registered so subsequent
+	// operations that resolve against it find the entry.
+	svc.rootsMu.RLock()
+	defer svc.rootsMu.RUnlock()
+	if _, ok := svc.roots[link]; !ok {
+		t.Fatalf("trustDir(symlink) must register an entry keyed on the symlink path")
+	}
+}
+
+// TestTrustDirRejectsSymlinkToFile covers the case where the caller
+// hands trustDir a symlink that resolves to a regular file. The file
+// existence check (info.IsDir() == false) trips first, surfacing the
+// "not a directory" error before OpenRoot is even attempted.
+func TestTrustDirRejectsSymlinkToFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink semantics differ on Windows")
+	}
+	holder := t.TempDir()
+	real := filepath.Join(holder, "real.md")
+	if err := os.WriteFile(real, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(holder, "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("Symlink not supported in this environment: %v", err)
+	}
+
+	svc := &AppService{}
+	err := svc.trustDir(link)
+	if err == nil {
+		t.Fatal("expected trustDir to fail on a symlink to a file")
+	}
+}

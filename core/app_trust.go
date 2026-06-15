@@ -53,9 +53,17 @@ func (s *AppService) trustDir(dir string) error {
 	}
 	s.rootsMu.RUnlock()
 
-	// os.OpenRoot on Unix uses open(O_DIRECTORY|O_RDONLY|O_NOFOLLOW), so
-	// passing a symlink as the root itself fails. We let that surface as
-	// an error — the caller is expected to pick a real directory.
+	// os.OpenRoot follows symbolic links in the directory name (Go's
+	// documented contract). On macOS that means a symlink to a directory
+	// is opened as if the user had picked the directory directly. Symlinks
+	// to non-directories are rejected by OpenRoot with ENOTDIR.
+	//
+	// Trust here is therefore "the resolved directory and everything it
+	// contains" — the same as a user-picked path. The kernel-level
+	// containment that blocks escape-attempts happens later, in the
+	// methods called on the returned Root (ReadFile, OpenFile, etc.),
+	// which use openat with O_NOFOLLOW and refuse to follow any symlink
+	// that would exit the root.
 	root, err := os.OpenRoot(abs)
 	if err != nil {
 		return err

@@ -176,4 +176,79 @@ describe('useFile', () => {
 
     vi.useRealTimers()
   })
+
+  it('saveToPath writes content to the supplied path and updates state', async () => {
+    const bindings = await import('../../bindings/changeme/core/appservice')
+    vi.mocked(bindings.WriteFile).mockResolvedValue(undefined)
+
+    const { useFile, setContent } = await import('./useFile')
+    const { filePath, content, isDirty, saveError, saveToPath } = useFile()
+    setContent('# SaveToPath body')
+
+    await saveToPath('/tmp/chosen.md')
+
+    expect(bindings.WriteFile).toHaveBeenCalledWith('/tmp/chosen.md', '# SaveToPath body')
+    expect(filePath.value).toBe('/tmp/chosen.md')
+    expect(isDirty.value).toBe(false)
+    expect(saveError.value).toBeNull()
+    // Content stays populated so the editor continues to show what was saved.
+    expect(content.value).toBe('# SaveToPath body')
+  })
+
+  it('saveToPath captures WriteFile errors into saveError and keeps isDirty', async () => {
+    const bindings = await import('../../bindings/changeme/core/appservice')
+    vi.mocked(bindings.WriteFile).mockRejectedValue(new Error('permission denied'))
+
+    const { useFile, setContent } = await import('./useFile')
+    const { filePath, isDirty, saveError, saveToPath } = useFile()
+    setContent('# Body')
+    isDirty.value = true
+
+    await saveToPath('/tmp/locked.md')
+
+    expect(saveError.value).toBe('permission denied')
+    expect(isDirty.value).toBe(true)
+    // filePath is updated AFTER the write, so a failed save leaves the
+    // editor pointed at the previous (still-trusted) path.
+    expect(filePath.value).toBe('')
+  })
+
+  it('saveToPath is a no-op while a save is already in flight', async () => {
+    const bindings = await import('../../bindings/changeme/core/appservice')
+    let resolveWrite!: () => void
+    vi.mocked(bindings.WriteFile).mockImplementation(
+      () => new Promise<void>((res) => { resolveWrite = res }),
+    )
+
+    const { useFile, setContent } = await import('./useFile')
+    const { saveToPath } = useFile()
+    setContent('# Body')
+
+    const first = saveToPath('/tmp/first.md')
+    // While the first write is still pending, a second call should be ignored.
+    await saveToPath('/tmp/second.md')
+
+    expect(bindings.WriteFile).toHaveBeenCalledTimes(1)
+    expect(bindings.WriteFile).toHaveBeenCalledWith('/tmp/first.md', '# Body')
+
+    resolveWrite()
+    await first
+  })
+
+  it('saveToPath clears a prior saveError on the next successful write', async () => {
+    const bindings = await import('../../bindings/changeme/core/appservice')
+    vi.mocked(bindings.WriteFile)
+      .mockRejectedValueOnce(new Error('first fails'))
+      .mockResolvedValueOnce(undefined)
+
+    const { useFile, setContent } = await import('./useFile')
+    const { saveError, saveToPath } = useFile()
+    setContent('# Body')
+
+    await saveToPath('/tmp/a.md')
+    expect(saveError.value).toBe('first fails')
+
+    await saveToPath('/tmp/b.md')
+    expect(saveError.value).toBeNull()
+  })
 })
