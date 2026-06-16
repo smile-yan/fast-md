@@ -35,7 +35,6 @@ const translations = {
       settings: '设置',
       close: '关闭',
       help: '帮助',
-      about: '关于',
     },
 
     // About dialog
@@ -180,7 +179,6 @@ const translations = {
       settings: 'Settings',
       close: 'Close',
       help: 'Help',
-      about: 'About',
     },
 
     // About dialog
