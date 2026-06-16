@@ -5,27 +5,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
-import { refractor } from 'refractor'
-import markdown from 'refractor/lang/markdown'
-import javascript from 'refractor/lang/javascript'
-import typescript from 'refractor/lang/typescript'
-import jsx from 'refractor/lang/jsx'
-import tsx from 'refractor/lang/tsx'
-import css from 'refractor/lang/css'
-import python from 'refractor/lang/python'
-import bash from 'refractor/lang/bash'
-import json from 'refractor/lang/json'
-import yaml from 'refractor/lang/yaml'
-import markup from 'refractor/lang/markup'
-import go from 'refractor/lang/go'
-import rust from 'refractor/lang/rust'
-import java from 'refractor/lang/java'
-import cpp from 'refractor/lang/cpp'
-import c from 'refractor/lang/c'
-import sql from 'refractor/lang/sql'
-import docker from 'refractor/lang/docker'
-import nginx from 'refractor/lang/nginx'
-import { prism, prismConfig } from '@milkdown/plugin-prism'
+import Prism from '../prismSetup'
 import {
   addBlockTypeCommand,
   clearTextInCurrentBlockCommand,
@@ -65,26 +45,6 @@ import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame.css'
 import 'prismjs/themes/prism-tomorrow.css'
 
-refractor.register(markdown)
-refractor.register(javascript)
-refractor.register(typescript)
-refractor.register(jsx)
-refractor.register(tsx)
-refractor.register(css)
-refractor.register(python)
-refractor.register(bash)
-refractor.register(json)
-refractor.register(yaml)
-refractor.register(markup)
-refractor.register(go)
-refractor.register(rust)
-refractor.register(java)
-refractor.register(cpp)
-refractor.register(c)
-refractor.register(sql)
-refractor.register(docker)
-refractor.register(nginx)
-
 const STORAGE_KEY = 'fast-md-settings'
 
 function getShowLineNumbers(): boolean {
@@ -109,6 +69,28 @@ const emit = defineEmits<{
 const editorRef = ref<HTMLElement | null>(null)
 const showLineNumbers = ref(getShowLineNumbers())
 let crepe: Crepe | null = null
+let observer: MutationObserver | null = null
+
+function highlightCodeBlocks(root: HTMLElement) {
+  const blocks = root.querySelectorAll('pre code')
+  blocks.forEach((block) => {
+    const el = block as HTMLElement
+    if (el.dataset.prismHighlighted === 'true') return
+    const cls = Array.from(el.classList).find((c) => c.startsWith('language-'))
+    const language = cls ? cls.replace('language-', '') : 'text'
+    if (language === 'text' || Prism.languages[language]) {
+      el.classList.add(`language-${language}`)
+      Prism.highlightElement(el)
+      el.dataset.prismHighlighted = 'true'
+    }
+  })
+}
+
+function observeCodeBlocks(root: HTMLElement) {
+  highlightCodeBlocks(root)
+  observer = new MutationObserver(() => highlightCodeBlocks(root))
+  observer.observe(root, { childList: true, subtree: true })
+}
 let suppressEmitUntil = 0
 
 // Listen for settings change events
@@ -338,12 +320,7 @@ onMounted(async () => {
     },
   })
 
-  crepe.editor
-    .use(typoraMacOSKeymap)
-    .use(prism)
-    .config((ctx) => {
-      ctx.set(prismConfig.key, { configureRefractor: () => refractor })
-    })
+  crepe.editor.use(typoraMacOSKeymap)
 
   crepe.on((api) => {
     api.markdownUpdated((_ctx, markdown) => {
@@ -354,6 +331,9 @@ onMounted(async () => {
   })
 
   await crepe.create()
+
+  // Highlight code blocks with Prism.js after Crepe renders them.
+  if (editorRef.value) observeCodeBlocks(editorRef.value)
 
   // Auto-focus the editor on mount (Typora-like: ready to type immediately)
   requestAnimationFrame(() => {
@@ -392,6 +372,8 @@ watch(
 )
 
 onUnmounted(() => {
+  observer?.disconnect()
+  observer = null
   crepe?.destroy()
   crepe = null
   window.removeEventListener('fast-md-settings-changed', handleSettingsChange)
@@ -418,22 +400,23 @@ onUnmounted(() => {
 }
 
 :deep(.milkdown .ProseMirror pre) {
-  background: #2d2d2d;
-  border-radius: 6px;
-  padding: 16px;
-  overflow-x: auto;
+  background: #2d2d2d !important;
+  border-radius: 6px !important;
+  padding: 16px !important;
+  overflow-x: auto !important;
+  margin-top: 15px !important;
+  margin-bottom: 15px !important;
+  border: none !important;
 }
 
 :deep(.milkdown .ProseMirror pre code) {
-  font-family: var(--code-font-family, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace);
-  font-size: 0.9em;
-  background: transparent;
-  padding: 0;
-  color: #ccc;
-}
-
-:deep(.milkdown .ProseMirror .code-block) {
-  position: relative;
+  font-family: var(--code-font-family, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace) !important;
+  font-size: 0.9em !important;
+  background: transparent !important;
+  padding: 0 !important;
+  color: #ccc !important;
+  border: none !important;
+  text-shadow: none !important;
 }
 
 .hide-line-numbers :deep(.cm-lineNumbers),

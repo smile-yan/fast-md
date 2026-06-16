@@ -1,3 +1,4 @@
+
 // Vitest setup: replace broken Node.js v25 native localStorage proxy
 // with a working in-memory implementation
 class InMemoryStorage {
