@@ -61,18 +61,23 @@ dev_mode:
 
 # File Associations
 # More information at: https://v3.wails.io/noit/done/yet
+#
+# Note: build/darwin/Info.plist and Info.dev.plist are the source of truth
+# shipped in the .app bundle (see build/darwin/Taskfile.yml -> create:app:bundle).
+# They have been hand-edited (CFBundleIdentifier, CFBundleName, copyright, etc.
+# all diverge from the `info:` defaults below), so DO NOT run
+# `wails3 update build-assets` blindly — it would overwrite those values.
+# Keep this block in sync with the CFBundleDocumentTypes entries in those
+# plist files instead.
 fileAssociations:
-#  - ext: wails
-#    name: Wails
-#    description: Wails Application File
-#    iconName: wailsFileIcon
-#    role: Editor
-#  - ext: jpg
-#    name: JPEG
-#    description: Image File
-#    iconName: jpegFileIcon
-#    role: Editor
-#    mimeType: image/jpeg  # (optional)
+  - ext: md
+    name: Markdown File
+    description: Markdown Document
+    role: Editor
+  - ext: markdown
+    name: Markdown File
+    description: Markdown Document
+    role: Editor
 
 # Other data
 other:
