@@ -89,7 +89,7 @@ describe('Settings content theme', () => {
     expect(source).toMatch(/\.settings-sidebar\s*{[^}]*width:\s*28%;[^}]*min-width:\s*176px;[^}]*padding:\s*16px\s+12px;[^}]*gap:\s*6px;/s)
     expect(source).toMatch(/\.settings-category\s*{[^}]*gap:\s*14px;[^}]*padding:\s*12px\s+18px;[^}]*font-size:\s*14px;[^}]*width:\s*100%;[^}]*min-height:\s*44px;/s)
     expect(source).toMatch(/\.settings-category-icon\s*{[^}]*width:\s*20px;/s)
-    expect(source).toMatch(/\.settings-category-icon\s+i\s*{[^}]*font-size:\s*16px;/s)
+    expect(source).toMatch(/\.settings-category-icon\s+svg\s*{[^}]*width:\s*16px;[^}]*height:\s*16px;/s)
   })
 
   it('omits unfinished text, export, and word wrap settings from the UI model', () => {

@@ -18,7 +18,7 @@
             :class="{ active: activeCategory === cat.id }"
             @click="activeCategory = cat.id"
           >
-            <span class="settings-category-icon"><i :class="cat.icon"></i></span>
+            <span class="settings-category-icon"><CategoryIcon :name="cat.icon" /></span>
             <span class="settings-category-label">{{ t('settings.' + cat.id) }}</span>
           </button>
         </nav>
@@ -170,6 +170,7 @@
 import { ref, reactive, watch } from 'vue'
 import { useLocale } from '../composables/useLocale'
 import { SaveConfig, RestartApp } from '../../bindings/changeme/core/appservice'
+import CategoryIcon from './CategoryIcon.vue'
 
 const emit = defineEmits<{
   close: []
@@ -267,10 +268,10 @@ const settings = reactive<SettingsState>(loadSettings())
 watch(settings, () => saveSettings(), { deep: true })
 
 const categories = [
-  { id: 'general', icon: 'fa-solid fa-gear' },
-  { id: 'editor', icon: 'fa-solid fa-pen' },
-  { id: 'image', icon: 'fa-solid fa-image' },
-  { id: 'appearance', icon: 'fa-solid fa-palette' },
+  { id: 'general', icon: 'gear' },
+  { id: 'editor', icon: 'pen' },
+  { id: 'image', icon: 'image' },
+  { id: 'appearance', icon: 'palette' },
 ]
 
 const activeCategory = ref('general')
@@ -381,9 +382,13 @@ const activeCategory = ref('general')
   width: 20px;
   text-align: center;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
-.settings-category-icon i {
-  font-size: 16px;
+.settings-category-icon svg {
+  width: 16px;
+  height: 16px;
 }
 .settings-category-label {
   flex-shrink: 0;
