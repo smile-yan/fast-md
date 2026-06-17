@@ -1,6 +1,6 @@
 # fast-md todo list
 
-Issues / followups discovered during the `fastmd` CLI install + rename work (commits `82441fe` and `94f9ca4`).
+Issues / followups discovered during the `fastmd` CLI install + rename work (commits `82441fe`, `94f9ca4`, `481fed2`).
 
 ## P0 — data preservation
 
@@ -24,6 +24,13 @@ Issues / followups discovered during the `fastmd` CLI install + rename work (com
 - [ ] **Plan accuracy: `build/ios/build.sh`.** Not in the initial grep output, only caught in the post-implementation sanity grep. The original grep excluded `.sh` files inside `build/*/` because the find pattern was scoped to the top level. Loosen the grep include to `**/*.sh` (with a few excludes) for the next cross-platform sweep.
 
 - [ ] **`scripts/install-cli.sh` had a command-substitution bug** (backticks inside a `log "..."` argument). Fixed in `82441fe` but worth a `shellcheck` pass on the script directory before the next release. The repo currently has no shell-script linting in CI.
+
+## Done in commit `481fed2`
+
+- [x] **GitHub repo renamed `smile-yan/fast-md` → `smile-yan/fastmd`** via `gh repo rename`. Old URL permanently 301-redirects; clone/web/release/issue links all preserved. Local `git remote set-url origin git@github.com:smile-yan/fastmd.git`. The `fastmd` repo description ("Typora-like markdown editor: faster but free.") was preserved automatically and didn't reference `fast-md`, so no manual fix needed.
+- [x] **README.md** updated (12 occurrences of `fast-md` → `fastmd`, including the install instructions that pointed at the stale `fast-md.app` path and the fallback `open -a fast-md` that no longer matches the wrapper).
+- [x] **`frontend/index.html:8` `<title>fast-md</title>`** → `fastmd`. Was visible in the browser tab during initial load before Wails takes over.
+- [x] **`frontend/src/components/About.vue:70` `repoURL`** → `https://github.com/smile-yan/fastmd`.
 
 ## Already-shipped behaviors worth documenting in CLAUDE.md
 
