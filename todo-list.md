@@ -19,6 +19,22 @@ Issues / followups discovered during the `fastmd` CLI install + rename work (com
 
 - [ ] **`useLocale` `t(key, params)` interpolation has no test** (added in `e471a68`). The `{name}` substitution logic in `useLocale.ts:323-327` is brand-new and untested. The existing `useLocale.test.ts` only covers localStorage round-trip, not `t()`. A 3-case test (substitutes, leaves unknown `{x}` alone, no-params path) is sufficient.
 
+- [ ] **In-app rendering parity with Typora's default theme** (code blocks excluded). For a given `.md` file, fastmd's in-app editor should render the same as Typora — same typography (font family, sizes, line height), same spacing (paragraph margins, list indent), same heading scale, same blockquote / table / image / link styling. **Code blocks (inline + fenced) are explicitly out of scope for this round** — Crepe's code-block plugin and Typora's code-block rendering diverge significantly and we accept the difference.
+
+  **Decision needed before work starts**: which Typora theme is "default"?
+  - *GitHub* — the repo already has `typoraGithubExportCss` at `frontend/src/exportHtml.ts:1-296` as a reference, and `frontend/public/themes/github/` ships the matching font files. Highest reuse value.
+  - *Default* — Typora's original white typographic theme. NOT in the repo; would need to be authored from scratch (or pulled from Typora's open-source stylesheet).
+  - *Newsprint / Night / Black / …* — less likely candidates; would also need full authoring.
+
+  **Current state**: the in-app editor uses `@milkdown/crepe/theme` (Crepe's default), which is Typora-adjacent but has visible deltas — heading scale, list indent, table borders, link color, blockquote style, image alignment (Typora centers standalone images; Crepe left-aligns). Light + dark theme tokens live at `frontend/src/style.css:25-65` (`:root` + `html.dark`).
+
+  **Approach options** (pick one after confirming target theme):
+  - (a) Author a custom CSS layer in `frontend/src/style.css` (or a new `editor-theme.css`) that overrides Crepe's selectors to match Typora. Non-invasive; keeps Crepe as the renderer.
+  - (b) Reuse `typoraGithubExportCss` for in-app too: scope the existing `.markdown-body` selectors to also cover `.milkdown .ProseMirror`, and wire the same CSS into the in-app layout. Tightest visual parity at the cost of selector coupling.
+  - (c) Replace Crepe's theme via Milkdown's `ThemeBundle` and apply a custom `nord`-style theme. More invasive, but most maintainable long-term.
+
+  **Verification**: visual diff via screenshot of a representative `.md` (e.g. `docs/help/quick-start.md` has headings / lists / blockquote / code blocks / images / tables) under both Typora and fastmd, side-by-side comparison. Automated pixel diff is overkill for v1; an eyeball pass per element type is fine. Light theme first; dark theme follows once the light one converges.
+
 ## P2 — followups from the planning
 
 - [ ] **Wails `SingleInstance` (P2 from the previous plan).** Confirmed available in v3 alpha.96 (`application.SingleInstanceOptions` with `OnSecondInstanceLaunch` receiving `SecondInstanceData{Args, WorkingDir}`). Not enabled because `open -a` already routes via Apple Events, so the current UX is correct. Enable later if the user wants true single-process behavior (e.g. quit-on-last-window-close semantics become meaningful). Document the trade-off in a comment near `core/run.go:202-214`.
