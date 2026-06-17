@@ -1,6 +1,6 @@
 # fast-md todo list
 
-Issues / followups discovered during the `fastmd` CLI install + rename work (commits `82441fe`, `94f9ca4`, `481fed2`), and the export-HTML fix / PDF success toast (commit TBD).
+Issues / followups discovered during the `fastmd` CLI install + rename work (commits `82441fe`, `94f9ca4`, `481fed2`), and the export-HTML fix / PDF success toast (commit `e471a68`).
 
 ## P0 — data preservation
 
@@ -15,6 +15,10 @@ Issues / followups discovered during the `fastmd` CLI install + rename work (com
 
 - [ ] **DMG volume name in CI** (`-volname "fastmd"` in `.github/workflows/release.yml:171`) is now 6 chars and may collide with another app's mounted volume. macOS handles duplicates by appending `-1`, `-2`, etc. Not a real problem, but worth knowing.
 
+- [ ] **Toast.vue component has no vitest coverage** (added in `e471a68`). The composable `useToast` is tested (module state, show/dismiss/nonce/duration:0) but the Vue component itself is uncovered: timer reset on a fresh toast, `active.value === null` → component gone, action click → onClick + dismiss in one step. Easy to break during a refactor. Test should live alongside `useToast.test.ts` as `Toast.test.ts`.
+
+- [ ] **`useLocale` `t(key, params)` interpolation has no test** (added in `e471a68`). The `{name}` substitution logic in `useLocale.ts:323-327` is brand-new and untested. The existing `useLocale.test.ts` only covers localStorage round-trip, not `t()`. A 3-case test (substitutes, leaves unknown `{x}` alone, no-params path) is sufficient.
+
 ## P2 — followups from the planning
 
 - [ ] **Wails `SingleInstance` (P2 from the previous plan).** Confirmed available in v3 alpha.96 (`application.SingleInstanceOptions` with `OnSecondInstanceLaunch` receiving `SecondInstanceData{Args, WorkingDir}`). Not enabled because `open -a` already routes via Apple Events, so the current UX is correct. Enable later if the user wants true single-process behavior (e.g. quit-on-last-window-close semantics become meaningful). Document the trade-off in a comment near `core/run.go:202-214`.
@@ -24,6 +28,8 @@ Issues / followups discovered during the `fastmd` CLI install + rename work (com
 - [ ] **Plan accuracy: `build/ios/build.sh`.** Not in the initial grep output, only caught in the post-implementation sanity grep. The original grep excluded `.sh` files inside `build/*/` because the find pattern was scoped to the top level. Loosen the grep include to `**/*.sh` (with a few excludes) for the next cross-platform sweep.
 
 - [ ] **`scripts/install-cli.sh` had a command-substitution bug** (backticks inside a `log "..."` argument). Fixed in `82441fe` but worth a `shellcheck` pass on the script directory before the next release. The repo currently has no shell-script linting in CI.
+
+- [ ] **`RevealInFinder` platform implementations have no integration test.** `core/reveal_darwin.go` shells out to `open -R`; `reveal_windows.go` runs `explorer /select,`; `reveal_other.go` runs `xdg-open` on the parent dir. The empty-path guard is covered by `TestRevealInFinderEmptyPath`, but the happy path and command-failure path aren't. Mocking `exec.Command` is fiddly across the three build tags; consider an `interface{ run(name string, args ...string) error }` indirection or a build-tag-aware test that only runs where the binary actually exists.
 
 ## Done in commit `481fed2`
 
@@ -37,3 +43,5 @@ Issues / followups discovered during the `fastmd` CLI install + rename work (com
 - **`open -a fastmd` is the CLI entry point** (not direct binary invocation). macOS LaunchServices routes the kAEOpenDocuments Apple Event to the running instance — no Wails `SingleInstance` needed. Already explained in the `os.Args` fallback comment at `core/run.go:223-234`; consider promoting it to CLAUDE.md so future contributors don't re-enable `SingleInstance` redundantly.
 
 - **Wrapper script lives in `Contents/Resources/fastmd`, not `Contents/MacOS/`.** Deliberately chosen to keep the Go binary's ad-hoc codesign clean (Resources aren't part of `--deep` signing). Documented in `scripts/fastmd-wrapper.sh:2-4`; CLAUDE.md could mention it under the macOS-only features section.
+
+- **Wails webview does not honour `<a download>` clicks.** Any "give the user a file" flow (HTML export, future Markdown export, asset download) must go through a Go binding that opens a native `SaveFile` dialog. The frontend Blob+`a.click()` pattern that works in a regular browser is a silent no-op in the Wails webview. The HTML export bug that motivated `e471a68` is the canonical example; CLAUDE.md should call this out under the macOS-only / frontend notes section so the next "let me just trigger a download" attempt doesn't repeat the mistake.
