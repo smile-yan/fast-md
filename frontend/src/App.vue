@@ -160,7 +160,8 @@ async function requestClose(action: 'close' | 'quit') {
     const result = await ShowSaveDialog(filename)
     if (result === 'save') {
       try {
-        await saveFile()
+        const result = await saveFile()
+        if (result) showSaveToast(result.path)
       } catch (err) {
         // Save failed — surface the error and abort the close so the user
         // can retry or pick a different location. Previously the rejection
@@ -184,7 +185,9 @@ async function requestClose(action: 'close' | 'quit') {
     const result = await ShowCloseSheet('', '')
     if (result.startsWith('save:')) {
       try {
-        await saveToPath(result.slice(5))
+        const newPath = result.slice(5)
+        const saved = await saveToPath(newPath)
+        if (saved) showSaveToast(saved.path)
       } catch (err) {
         console.error('Save failed:', err)
         alert(t('dialog.saveFailed'))
@@ -267,6 +270,25 @@ function showExportToast(path: string, name: string) {
   })
 }
 
+function showSaveToast(path: string) {
+  // Derive the basename from the full path; keep the extension so the
+  // user sees exactly which file was written. For an untitled (never-
+  // saved) buffer there's no path, but the save call sites only invoke
+  // this on success so path is always non-empty here.
+  const name = path.split('/').pop() ?? path
+  showToast({
+    message: t('dialog.saveSuccess', { name }),
+    action: {
+      label: t('dialog.revealInFinder'),
+      onClick: () => {
+        RevealInFinder(path).catch((e) => {
+          console.error('RevealInFinder failed:', e)
+        })
+      },
+    },
+  })
+}
+
 function handleExportError(err: unknown, kind: string) {
   // Go returns fmt.Errorf("cancelled") when the user closes the save
   // dialog. Treat that as benign — no alert, no console noise.
@@ -307,11 +329,15 @@ onMounted(async () => {
   cleanups.push(Events.On('file:open', (ev) => openFile(ev.data as string)))
   cleanups.push(Events.On('menu:save', () => {
     commitSourceModeEdits()
-    saveFile()
+    void saveFile().then((result) => {
+      if (result) showSaveToast(result.path)
+    })
   }))
   cleanups.push(Events.On('menu:saveAs', () => {
     commitSourceModeEdits()
-    saveAs()
+    void saveAs().then((result) => {
+      if (result) showSaveToast(result.path)
+    })
   }))
   cleanups.push(Events.On('menu:toggleSidebar', () => { sidebarOpen.value = !sidebarOpen.value }))
   cleanups.push(Events.On('menu:settings', () => { showSettings.value = true }))

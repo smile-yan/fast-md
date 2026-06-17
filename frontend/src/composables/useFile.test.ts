@@ -48,8 +48,9 @@ describe('useFile', () => {
     const { filePath, saveFile } = useFile()
     filePath.value = '/tmp/test.md'
     setContent('# Updated')
-    await saveFile()
+    const result = await saveFile()
     expect(bindings.WriteFile).toHaveBeenCalledWith('/tmp/test.md', '# Updated')
+    expect(result).toEqual({ path: '/tmp/test.md' })
   })
 
   it('saveFile calls SaveFileDialog when no path', async () => {
@@ -59,9 +60,23 @@ describe('useFile', () => {
     const { useFile, setContent } = await import('./useFile')
     const { filePath, saveFile } = useFile()
     setContent('# New')
-    await saveFile()
+    const result = await saveFile()
     expect(bindings.SaveFileDialog).toHaveBeenCalled()
     expect(filePath.value).toBe('/tmp/new.md')
+    expect(result).toEqual({ path: '/tmp/new.md' })
+  })
+
+  it('saveAs returns null when the user cancels the dialog', async () => {
+    const bindings = await import('../../bindings/changeme/core/appservice')
+    vi.mocked(bindings.SaveFileDialog).mockResolvedValue('')
+    const { useFile, setContent } = await import('./useFile')
+    const { filePath, saveAs } = useFile()
+    setContent('# Draft')
+    const result = await saveAs()
+    expect(result).toBeNull()
+    // filePath must NOT change on cancel — pointing the editor at a
+    // never-written path would mislead the title bar and recent files.
+    expect(filePath.value).toBe('')
   })
 
   it('auto saves existing files every 10 seconds by default', async () => {
