@@ -17,10 +17,6 @@ var (
 	Service          *AppService
 	allowedClose     = make(map[uint]bool)
 	allowedCloseLock sync.Mutex
-	// initialFileOpened tracks whether the file passed via command-line
-	// args (i.e., the first file opened at launch) has already been
-	// handled by ApplicationOpenedWithFile to avoid opening it twice.
-	initialFileOpened string
 )
 
 // AllowWindowClose marks the given window ID as authorized to actually close.
@@ -230,22 +226,42 @@ func Run(assets fs.FS) error {
 	cfg := LoadConfig()
 	SetLocale(cfg.Language)
 
-	// If the user invoked the embedded binary directly (bypassing the
-	// Contents/Resources/fastmd wrapper), honour the .md arg from
-	// os.Args. The wrapper at Contents/Resources/fastmd is the
-	// canonical entry point — it routes through `open -a` so
-	// kAEOpenDocuments hits the ApplicationOpenedWithFile handler
-	// below and the file opens in a (possibly existing) instance. This
-	// direct-binary branch is the fallback for users who invoke the
-	// bundle executable manually.
-	if initialFile := firstFileFromArgs(os.Args[1:]); initialFile != "" {
+	// Check if launched with a command-line file argument.
+	// If so, open it immediately and mark that we've handled the initial file.
+	initialFile := firstFileFromArgs(os.Args[1:])
+	handledInitialFile := initialFile != ""
+	if handledInitialFile {
 		if err := Service.trustDir(filepath.Dir(initialFile)); err != nil {
 			log.Printf("trustDir(%s) failed: %v", filepath.Dir(initialFile), err)
 		}
-		// Record this so ApplicationOpenedWithFile doesn't re-open it.
-		initialFileOpened = initialFile
 		NewEditorWindowWithFile(app, initialFile)
-	} else {
+	}
+
+	app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
+		path := event.Context().Filename()
+		if path == "" {
+			return
+		}
+		// If this is the same file we already opened via command-line, skip it.
+		if handledInitialFile {
+			normalizedPath, _ := filepath.EvalSymlinks(path)
+			normalizedInitial, _ := filepath.EvalSymlinks(initialFile)
+			if normalizedPath == normalizedInitial {
+				return
+			}
+		}
+		// The user double-clicked a file in Finder or used "Open With"
+		// from another app — the OS expects a new window per request.
+		if Service != nil {
+			if err := Service.trustDir(filepath.Dir(path)); err != nil {
+				log.Printf("trustDir(%s) failed: %v", filepath.Dir(path), err)
+			}
+		}
+		NewEditorWindowWithFile(app, path)
+	})
+
+	// Only create empty window if no file was opened via command-line.
+	if !handledInitialFile {
 		NewEditorWindow(app)
 	}
 
@@ -253,31 +269,6 @@ func Run(assets fs.FS) error {
 		if !event.Context().HasVisibleWindows() {
 			NewEditorWindow(app)
 		}
-	})
-
-	app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
-		path := event.Context().Filename()
-		if path == "" {
-			return
-		}
-		// Normalize path for comparison (resolve symlinks and clean).
-		normalizedPath, _ := filepath.EvalSymlinks(path)
-		normalizedInitial, _ := filepath.EvalSymlinks(initialFileOpened)
-		// Skip if this file was already opened via command-line args to
-		// avoid the double-window issue when macOS triggers both paths.
-		if normalizedPath != "" && normalizedPath == normalizedInitial {
-			initialFileOpened = ""
-			return
-		}
-		// The user double-clicked a file in Finder or used "Open With"
-		// from another app — the OS expects a new window per request,
-		// never to overwrite whatever the focused window is editing.
-		if Service != nil {
-			if err := Service.trustDir(filepath.Dir(path)); err != nil {
-				log.Printf("trustDir(%s) failed: %v", filepath.Dir(path), err)
-			}
-		}
-		NewEditorWindowWithFile(app, path)
 	})
 
 	buildMenuI18n(app)
