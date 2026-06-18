@@ -227,15 +227,7 @@ func Run(assets fs.FS) error {
 	SetLocale(cfg.Language)
 
 	// Check if launched with a command-line file argument.
-	// If so, open it immediately and mark that we've handled the initial file.
 	initialFile := firstFileFromArgs(os.Args[1:])
-	handledInitialFile := initialFile != ""
-	if handledInitialFile {
-		if err := Service.trustDir(filepath.Dir(initialFile)); err != nil {
-			log.Printf("trustDir(%s) failed: %v", filepath.Dir(initialFile), err)
-		}
-		NewEditorWindowWithFile(app, initialFile)
-	}
 
 	app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
 		path := event.Context().Filename()
@@ -243,7 +235,7 @@ func Run(assets fs.FS) error {
 			return
 		}
 		// If this is the same file we already opened via command-line, skip it.
-		if handledInitialFile {
+		if initialFile != "" {
 			normalizedPath, _ := filepath.EvalSymlinks(path)
 			normalizedInitial, _ := filepath.EvalSymlinks(initialFile)
 			if normalizedPath == normalizedInitial {
@@ -260,9 +252,14 @@ func Run(assets fs.FS) error {
 		NewEditorWindowWithFile(app, path)
 	})
 
-	// Only create empty window if no file was opened via command-line.
-	if !handledInitialFile {
-		NewEditorWindow(app)
+	// If launched with a command-line file argument, open it.
+	// Otherwise, don't create an empty window here — wait for
+	// ApplicationOpenedWithFile to deliver the file first.
+	if initialFile != "" {
+		if err := Service.trustDir(filepath.Dir(initialFile)); err != nil {
+			log.Printf("trustDir(%s) failed: %v", filepath.Dir(initialFile), err)
+		}
+		NewEditorWindowWithFile(app, initialFile)
 	}
 
 	app.Event.OnApplicationEvent(events.Mac.ApplicationShouldHandleReopen, func(event *application.ApplicationEvent) {
