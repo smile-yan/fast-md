@@ -52,7 +52,7 @@ func TestToggleFocusedFullscreenIgnoresMissingWindow(t *testing.T) {
 }
 
 func TestShortcutAcceleratorsMatchTyporaMacOS(t *testing.T) {
-	app := application.New(application.Options{Name: "fast-md-test"})
+	app := application.New(application.Options{Name: "fastmd-test"})
 	SetLocale("en")
 	buildMenuI18n(app)
 
@@ -65,14 +65,14 @@ func TestShortcutAcceleratorsMatchTyporaMacOS(t *testing.T) {
 }
 
 func TestDeveloperToolsShortcutRegisteredAsGlobalKeyBinding(t *testing.T) {
-	app := application.New(application.Options{Name: "fast-md-test"})
+	app := application.New(application.Options{Name: "fastmd-test"})
 	RegisterDeveloperToolsShortcut(app)
 
 	assertKeyBindingRegistered(t, app, "F12")
 }
 
 func TestViewMenuFullscreenItemStaysCustomAction(t *testing.T) {
-	app := application.New(application.Options{Name: "fast-md-test"})
+	app := application.New(application.Options{Name: "fastmd-test"})
 	SetLocale("en")
 	buildMenuI18n(app)
 
@@ -110,7 +110,7 @@ func TestBuildMenuI18nInstallsSystemMenuCleanersForCurrentLocale(t *testing.T) {
 		systemMenuCleanerInstaller = previous
 	}()
 
-	app := application.New(application.Options{Name: "fast-md-test"})
+	app := application.New(application.Options{Name: "fastmd-test"})
 	SetLocale("zh")
 	buildMenuI18n(app)
 
@@ -121,7 +121,7 @@ func TestBuildMenuI18nInstallsSystemMenuCleanersForCurrentLocale(t *testing.T) {
 }
 
 func TestViewMenuItemsHaveIcons(t *testing.T) {
-	app := application.New(application.Options{Name: "fast-md-test"})
+	app := application.New(application.Options{Name: "fastmd-test"})
 	SetLocale("en")
 	buildMenuI18n(app)
 
@@ -133,7 +133,7 @@ func TestViewMenuItemsHaveIcons(t *testing.T) {
 }
 
 func TestViewThemeMenuOnlyContainsPackagedThemes(t *testing.T) {
-	app := application.New(application.Options{Name: "fast-md-test"})
+	app := application.New(application.Options{Name: "fastmd-test"})
 	SetLocale("en")
 	buildMenuI18n(app)
 
@@ -150,7 +150,7 @@ func TestViewThemeMenuOnlyContainsPackagedThemes(t *testing.T) {
 }
 
 func TestFileMenuItemsHaveIcons(t *testing.T) {
-	app := application.New(application.Options{Name: "fast-md-test"})
+	app := application.New(application.Options{Name: "fastmd-test"})
 	SetLocale("en")
 	buildMenuI18n(app)
 
@@ -162,7 +162,7 @@ func TestFileMenuItemsHaveIcons(t *testing.T) {
 }
 
 func TestHelpMenuItemsHaveIcons(t *testing.T) {
-	app := application.New(application.Options{Name: "fast-md-test"})
+	app := application.New(application.Options{Name: "fastmd-test"})
 	SetLocale("en")
 	buildMenuI18n(app)
 
@@ -174,7 +174,7 @@ func TestHelpMenuItemsHaveIcons(t *testing.T) {
 }
 
 func TestHelpMenuContainsOnlyDocumentationItems(t *testing.T) {
-	app := application.New(application.Options{Name: "fast-md-test"})
+	app := application.New(application.Options{Name: "fastmd-test"})
 	SetLocale("zh")
 	buildMenuI18n(app)
 

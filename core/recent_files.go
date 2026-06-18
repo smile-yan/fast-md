@@ -143,6 +143,5 @@ func normalizeAndDedupe(paths []string) []string {
 // recentFilesPath is the canonical location for the persisted recent
 // list, alongside the config file.
 func recentFilesPath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, "Library", "Application Support", "fastmd", "recent.json")
+	return filepath.Join(supportDir(), "recent.json")
 }
