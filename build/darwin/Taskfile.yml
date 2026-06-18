@@ -124,6 +124,10 @@ tasks:
       - task: build
     cmds:
       - task: create:app:bundle
+      # Remove the raw executable after packaging to prevent it from
+      # being registered by Launch Services (which causes duplicate
+      # "fastmd" entries in the "Open With" menu).
+      - rm -f "{{.BIN_DIR}}/{{.APP_NAME}}"
 
   package:universal:
     summary: Packages darwin universal binary (arm64 + amd64)
@@ -131,6 +135,7 @@ tasks:
       - task: build:universal
     cmds:
       - task: create:app:bundle
+      - rm -f "{{.BIN_DIR}}/{{.APP_NAME}}"
 
 
   create:app:bundle:

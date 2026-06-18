@@ -17,6 +17,10 @@ var (
 	Service          *AppService
 	allowedClose     = make(map[uint]bool)
 	allowedCloseLock sync.Mutex
+	// initialFileOpened tracks whether the file passed via command-line
+	// args (i.e., the first file opened at launch) has already been
+	// handled by ApplicationOpenedWithFile to avoid opening it twice.
+	initialFileOpened string
 )
 
 // AllowWindowClose marks the given window ID as authorized to actually close.
@@ -238,6 +242,8 @@ func Run(assets fs.FS) error {
 		if err := Service.trustDir(filepath.Dir(initialFile)); err != nil {
 			log.Printf("trustDir(%s) failed: %v", filepath.Dir(initialFile), err)
 		}
+		// Record this so ApplicationOpenedWithFile doesn't re-open it.
+		initialFileOpened = initialFile
 		NewEditorWindowWithFile(app, initialFile)
 	} else {
 		NewEditorWindow(app)
@@ -252,6 +258,12 @@ func Run(assets fs.FS) error {
 	app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
 		path := event.Context().Filename()
 		if path == "" {
+			return
+		}
+		// Skip if this file was already opened via command-line args to
+		// avoid the double-window issue when macOS triggers both paths.
+		if path == initialFileOpened {
+			initialFileOpened = ""
 			return
 		}
 		// The user double-clicked a file in Finder or used "Open With"
