@@ -46,6 +46,14 @@ import { applyEditorSettingsVariables } from '../composables/useEditorSettings'
 import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame.css'
 
+// Intentionally uses the "fast-md-" prefix to preserve user settings
+// across the fast-md -> fastmd rename. New users see "fastmd" everywhere
+// except these internal localStorage keys — the inconsistency is invisible
+// and not worth a one-shot migration. See todo-list.md for context.
+// Intentionally uses the "fast-md-" prefix to preserve user settings
+// across the fast-md -> fastmd rename. New users see "fastmd" everywhere
+// except these internal localStorage keys — the inconsistency is invisible
+// and not worth a one-shot migration. See todo-list.md for context.
 const STORAGE_KEY = 'fast-md-settings'
 
 function getShowLineNumbers(): boolean {

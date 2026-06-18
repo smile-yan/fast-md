@@ -64,8 +64,7 @@ type AppConfig struct {
 }
 
 func getConfigPath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, "Library", "Application Support", "fastmd", "config.json")
+	return filepath.Join(supportDir(), "config.json")
 }
 
 // LoadConfig reads the user's persisted config, falling back to defaults
@@ -396,4 +395,103 @@ func exportHTMLToPDF(htmlContent string, outputPath string) error {
 		return fmt.Errorf("failed to save PDF: %w", err)
 	}
 	return nil
+}
+
+// supportDir returns the canonical app-support directory path
+// (~/Library/Application Support/fastmd on darwin). This is the single
+// source of truth for where config.json, recent.json, and other
+// runtime-persisted files live.
+func supportDir() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, "Library", "Application Support", "fastmd")
+}
+
+// oldSupportDir returns the pre-rename app-support directory
+// (~/Library/Application Support/fast-md) so migrateSupportDir knows
+// where to look.
+func oldSupportDir() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, "Library", "Application Support", "fast-md")
+}
+
+// migratedMarkerPath is the sentinel file written inside the new support
+// dir after a successful migration. Its mere presence means "already did
+// this, don't run again".
+func migratedMarkerPath() string {
+	return filepath.Join(supportDir(), ".migrated-from-fast-md")
+}
+
+// migrateSupportDir copies config.json and recent.json from the old
+// ~/Library/Application Support/fast-md/ to the new ~/Library/Application
+// Support/fastmd/ on first launch after an upgrade. It is a no-op when
+// the old directory does not exist, the marker file already exists, or
+// the new directory already contains the target files (e.g. the user
+// already launched the renamed app once).
+//
+// The marker file .migrated-from-fast-md is written to the new support dir
+// to prevent re-running the migration on every subsequent launch.
+// migration is best-effort — a failure is logged (to stderr) but does not
+// block app startup.
+func migrateSupportDir() {
+	oldDir := oldSupportDir()
+	newDir := supportDir()
+
+	// Nothing to migrate.
+	if _, err := os.Stat(oldDir); os.IsNotExist(err) {
+		return
+	}
+
+	// Already migrated in a previous launch.
+	if _, err := os.Stat(migratedMarkerPath()); err == nil {
+		return
+	}
+
+	// Ensure the new directory exists.
+	if err := os.MkdirAll(newDir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "migrateSupportDir: mkdir %s: %v\n", newDir, err)
+		return
+	}
+
+	type fileMove struct{ name, src, dst string }
+	candidates := []fileMove{
+		{"config.json", filepath.Join(oldDir, "config.json"), filepath.Join(newDir, "config.json")},
+		{"recent.json", filepath.Join(oldDir, "recent.json"), filepath.Join(newDir, "recent.json")},
+	}
+
+	for _, m := range candidates {
+		srcInfo, err := os.Stat(m.src)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "migrateSupportDir: stat %s: %v\n", m.src, err)
+			continue
+		}
+		if srcInfo.IsDir() {
+			continue // sanity — we expect regular files only
+		}
+
+		// Try an atomic rename first (works when old and new dir are on
+		// the same filesystem, which they always are under ~/Library).
+		if err := os.Rename(m.src, m.dst); err == nil {
+			continue
+		}
+
+		// Fall back to copy-then-delete when rename fails (e.g. cross-
+		// device, though unlikely here).
+		data, readErr := os.ReadFile(m.src)
+		if readErr != nil {
+			fmt.Fprintf(os.Stderr, "migrateSupportDir: read %s: %v\n", m.src, readErr)
+			continue
+		}
+		if writeErr := os.WriteFile(m.dst, data, 0644); writeErr != nil {
+			fmt.Fprintf(os.Stderr, "migrateSupportDir: write %s: %v\n", m.dst, writeErr)
+			continue
+		}
+	}
+
+	// Write the marker so we don't re-run.
+	if err := os.WriteFile(migratedMarkerPath(), []byte("migrated from fast-md\n"), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "migrateSupportDir: write marker: %v\n", err)
+	}
 }

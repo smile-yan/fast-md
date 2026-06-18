@@ -1,3 +1,11 @@
+// Intentionally uses the "fast-md-" prefix to preserve user settings
+// across the fast-md -> fastmd rename. New users see "fastmd" everywhere
+// except these internal localStorage keys — the inconsistency is invisible
+// and not worth a one-shot migration. See todo-list.md for context.
+// Intentionally uses the "fast-md-" prefix to preserve user settings
+// across the fast-md -> fastmd rename. New users see "fastmd" everywhere
+// except these internal localStorage keys — the inconsistency is invisible
+// and not worth a one-shot migration. See todo-list.md for context.
 const SETTINGS_STORAGE_KEY = 'fast-md-settings'
 
 type FontFamilyKey = 'system' | 'serif' | 'sans-serif' | 'monospace'

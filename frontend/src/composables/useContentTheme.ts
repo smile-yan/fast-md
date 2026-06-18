@@ -1,5 +1,13 @@
 import { ref } from 'vue'
 
+// Intentionally uses the "fast-md-" prefix to preserve user settings
+// across the fast-md -> fastmd rename. New users see "fastmd" everywhere
+// except these internal localStorage keys — the inconsistency is invisible
+// and not worth a one-shot migration. See todo-list.md for context.
+// Intentionally uses the "fast-md-" prefix to preserve user settings
+// across the fast-md -> fastmd rename. New users see "fastmd" everywhere
+// except these internal localStorage keys — the inconsistency is invisible
+// and not worth a one-shot migration. See todo-list.md for context.
 const SETTINGS_STORAGE_KEY = 'fast-md-settings'
 const DEFAULT_CONTENT_THEME = 'github'
 const AVAILABLE_CONTENT_THEMES = new Set([DEFAULT_CONTENT_THEME])

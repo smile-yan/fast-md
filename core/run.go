@@ -186,6 +186,12 @@ func RegisterDeveloperToolsShortcut(app *application.App) {
 func Run(assets fs.FS) error {
 	SetAssets(assets)
 
+	// On first launch after the fast-md -> fastmd rename, migrate the
+	// user's config and recents from the old support dir to the new one.
+	// This is a no-op when already migrated or when the old dir doesn't
+	// exist.
+	migrateSupportDir()
+
 	Service = &AppService{}
 
 	// The recent-files store is created here (not lazily) because the

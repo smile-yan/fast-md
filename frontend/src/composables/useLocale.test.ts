@@ -86,3 +86,58 @@ describe('useLocale translations', () => {
   })
 })
 
+
+describe('useLocale t() interpolation', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.resetModules()
+  })
+
+  it('substitutes {name} placeholders with params', async () => {
+    const { setLocale, useLocale } = await import('./useLocale')
+    const { t } = useLocale()
+    setLocale('zh')
+
+    const result = t('dialog.discardUnsavedFile', { name: 'my-doc.md' })
+    expect(result).toBe('"my-doc.md" 有未保存的更改。是否放弃并继续？')
+  })
+
+  it('substitutes {name} in English translations', async () => {
+    const { setLocale, useLocale } = await import('./useLocale')
+    const { t } = useLocale()
+    setLocale('en')
+
+    const result = t('dialog.discardUnsavedFile', { name: 'readme.md' })
+    expect(result).toBe('"readme.md" has unsaved changes. Discard and continue?')
+  })
+
+  it('leaves unknown {placeholder} placeholders untouched', async () => {
+    const { setLocale, useLocale } = await import('./useLocale')
+    const { t } = useLocale()
+    setLocale('zh')
+
+    const result = t('dialog.discardUnsavedFile', { name: 'doc.md', extra: 'ignored' })
+    expect(result).toBe('"doc.md" 有未保存的更改。是否放弃并继续？')
+  })
+
+  it('returns the string unchanged when no params are supplied', async () => {
+    const { setLocale, useLocale } = await import('./useLocale')
+    const { t } = useLocale()
+    setLocale('zh')
+
+    const result = t('dialog.discardUnsavedFile')
+    expect(result).toBe('"{name}" 有未保存的更改。是否放弃并继续？')
+  })
+
+  it('substitutes numeric params', async () => {
+    // None of the current translations use numeric params, but we can
+    // test the engine directly via a key like dialog.exportSuccess which
+    // uses {name} but we supply a number.
+    const { setLocale, useLocale } = await import('./useLocale')
+    const { t } = useLocale()
+    setLocale('en')
+
+    const result = t('dialog.exportSuccess', { name: 42 })
+    expect(result).toBe('Exported 42')
+  })
+})

@@ -2,6 +2,18 @@ import { ref, computed } from 'vue'
 
 export type Locale = 'zh' | 'en'
 
+// LOCALE_KEY intentionally uses the "fast-md-" prefix to preserve user
+// settings across the fast-md → fastmd rename. New users see "fastmd"
+// everywhere except these internal keys — the inconsistency is invisible
+// and not worth a migration.
+// Intentionally uses the "fast-md-" prefix to preserve user settings
+// across the fast-md -> fastmd rename. New users see "fastmd" everywhere
+// except these internal localStorage keys — the inconsistency is invisible
+// and not worth a one-shot migration. See todo-list.md for context.
+// Intentionally uses the "fast-md-" prefix to preserve user settings
+// across the fast-md -> fastmd rename. New users see "fastmd" everywhere
+// except these internal localStorage keys — the inconsistency is invisible
+// and not worth a one-shot migration. See todo-list.md for context.
 const LOCALE_KEY = 'fast-md-locale'
 
 const translations = {
