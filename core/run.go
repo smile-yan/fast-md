@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"log"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -135,30 +136,42 @@ func openFocusedDeveloperTools(app *application.App) {
 	OpenDeveloperTools(app.Window.Current())
 }
 
+// firstFileFromArgs scans argv (typically os.Args[1:]) for the first path
+// whose extension is .md or .markdown (case-insensitive), expanding a
+// leading "~/" or lone "~" via os.UserHomeDir, and returns its absolute
+// form. Returns "" when no candidate is found.
+func firstFileFromArgs(argv []string) string {
+	home, _ := os.UserHomeDir()
+	for _, arg := range argv {
+		if arg == "" {
+			continue
+		}
+		path := arg
+		switch {
+		case path == "~" && home != "":
+			path = home
+		case strings.HasPrefix(path, "~/") && home != "":
+			path = filepath.Join(home, path[2:])
+		}
+		lower := strings.ToLower(path)
+		if !strings.HasSuffix(lower, ".md") && !strings.HasSuffix(lower, ".markdown") {
+			continue
+		}
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			continue
+		}
+		return abs
+	}
+	return ""
+}
+
 // RegisterDeveloperToolsShortcut binds F12 to toggle DevTools on the
 // currently-focused window.
 func RegisterDeveloperToolsShortcut(app *application.App) {
 	app.KeyBinding.Add(DeveloperToolsShortcut, func(window application.Window) {
 		OpenDeveloperTools(window)
 	})
-}
-
-// OpenedFileTarget is anything that can receive a "file:open" event.
-type OpenedFileTarget interface {
-	EmitEvent(name string, data ...any) bool
-}
-
-// RouteOpenedFile sends file:open to the focused window if present, otherwise
-// calls openNewWindow with the path.
-func RouteOpenedFile(filePath string, current OpenedFileTarget, openNewWindow func(string)) {
-	if filePath == "" {
-		return
-	}
-	if current != nil {
-		current.EmitEvent("file:open", filePath)
-		return
-	}
-	openNewWindow(filePath)
 }
 
 // Run wires up the Wails app and starts its event loop. assets must be the
@@ -201,26 +214,46 @@ func Run(assets fs.FS) error {
 	cfg := LoadConfig()
 	SetLocale(cfg.Language)
 
-	NewEditorWindow(app)
+	// Check if launched with a command-line file argument.
+	initialFile := firstFileFromArgs(os.Args[1:])
+
+	app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
+		path := event.Context().Filename()
+		if path == "" {
+			return
+		}
+		// If this is the same file we already opened via command-line, skip it.
+		if initialFile != "" {
+			normalizedPath, _ := filepath.EvalSymlinks(path)
+			normalizedInitial, _ := filepath.EvalSymlinks(initialFile)
+			if normalizedPath == normalizedInitial {
+				return
+			}
+		}
+		// The user double-clicked a file in Finder or used "Open With"
+		// from another app — the OS expects a new window per request.
+		if Service != nil {
+			if err := Service.trustDir(filepath.Dir(path)); err != nil {
+				log.Printf("trustDir(%s) failed: %v", filepath.Dir(path), err)
+			}
+		}
+		NewEditorWindowWithFile(app, path)
+	})
+
+	// If launched with a command-line file argument, open it.
+	// Otherwise, don't create an empty window here — wait for
+	// ApplicationOpenedWithFile to deliver the file first.
+	if initialFile != "" {
+		if err := Service.trustDir(filepath.Dir(initialFile)); err != nil {
+			log.Printf("trustDir(%s) failed: %v", filepath.Dir(initialFile), err)
+		}
+		NewEditorWindowWithFile(app, initialFile)
+	}
 
 	app.Event.OnApplicationEvent(events.Mac.ApplicationShouldHandleReopen, func(event *application.ApplicationEvent) {
 		if !event.Context().HasVisibleWindows() {
 			NewEditorWindow(app)
 		}
-	})
-
-	app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
-		path := event.Context().Filename()
-		// The user double-clicked a file in Finder (or used "Open With"
-		// from another app) — trust its directory so ReadFile accepts it.
-		if path != "" && Service != nil {
-			if err := Service.trustDir(filepath.Dir(path)); err != nil {
-				log.Printf("trustDir(%s) failed: %v", filepath.Dir(path), err)
-			}
-		}
-		RouteOpenedFile(path, app.Window.Current(), func(path string) {
-			NewEditorWindowWithFile(app, path)
-		})
 	})
 
 	buildMenuI18n(app)
