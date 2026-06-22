@@ -151,11 +151,6 @@ html.dark .milkdown .ProseMirror {
   }
 }
 
-.milkdown .ProseMirror > ul:first-child,
-.milkdown .ProseMirror > ol:first-child {
-  margin-top: 30px !important;
-}
-
 .milkdown .ProseMirror > .prosemirror-virtual-cursor:first-child + h1 {
   margin-top: 0 !important;
 }
@@ -227,31 +222,9 @@ html.dark .milkdown .ProseMirror {
 
 .milkdown .ProseMirror p,
 .milkdown .ProseMirror blockquote,
-.milkdown .ProseMirror ul,
-.milkdown .ProseMirror ol,
 .milkdown .ProseMirror dl,
 .milkdown .ProseMirror table {
   margin: 0.8em 0 !important;
-}
-
-.milkdown .ProseMirror li > ol,
-.milkdown .ProseMirror li > ul {
-  margin: 0 !important;
-}
-
-.milkdown .ProseMirror ul,
-.milkdown .ProseMirror ol {
-  padding-left: 30px !important;
-}
-
-.milkdown .ProseMirror ul:first-child,
-.milkdown .ProseMirror ol:first-child {
-  margin-top: 0 !important;
-}
-
-.milkdown .ProseMirror ul:last-child,
-.milkdown .ProseMirror ol:last-child {
-  margin-bottom: 0 !important;
 }
 
 .milkdown .ProseMirror li p.first {
