@@ -1,3 +1,28 @@
+/* Responsive layout */
+.milkdown .ProseMirror {
+  max-width: 860px !important;
+  margin: 0 auto !important;
+  padding: 30px !important;
+  padding-bottom: 100px !important;
+}
+
+html.dark .milkdown .ProseMirror {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+@media only screen and (min-width: 1400px) {
+  .milkdown .ProseMirror {
+    max-width: 1024px !important;
+  }
+}
+
+@media only screen and (min-width: 1800px) {
+  .milkdown .ProseMirror {
+    max-width: 1200px !important;
+  }
+}
+
 /* Code block styles */
 .milkdown .ProseMirror pre,
 .milkdown .ProseMirror code,
