@@ -176,52 +176,6 @@
   display: inline-block !important;
 }
 
-.milkdown .ProseMirror .milkdown-list-item-block {
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-.milkdown .ProseMirror .milkdown-list-item-block ul,
-.milkdown .ProseMirror .milkdown-list-item-block ol {
-  margin: 0 !important;
-  padding-left: 0 !important;
-}
-
-.milkdown .ProseMirror .milkdown-list-item-block p {
-  margin: 0 !important;
-}
-
-.milkdown .ProseMirror .milkdown-list-item-block > .list-item {
-  display: flex !important;
-  align-items: flex-start !important;
-  gap: 10px !important;
-}
-
-.milkdown .ProseMirror .milkdown-list-item-block > .list-item > .children {
-  min-width: 0 !important;
-  flex: 1 !important;
-}
-
-.milkdown .ProseMirror .milkdown-list-item-block .label-wrapper {
-  width: 24px !important;
-  height: 32px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: var(--crepe-color-outline) !important;
-}
-
-.milkdown .ProseMirror .milkdown-list-item-block .label-wrapper svg {
-  fill: var(--crepe-color-outline) !important;
-}
-
-.milkdown .ProseMirror .milkdown-list-item-block .label-wrapper .label {
-  width: 24px !important;
-  height: 32px !important;
-  padding: 4px 0 !important;
-  text-align: right !important;
-}
-
 .milkdown .ProseMirror blockquote {
   margin: 0.8em 0 !important;
   border-left: 4px solid #dfe2e5 !important;
