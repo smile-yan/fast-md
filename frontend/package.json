@@ -12,8 +12,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@milkdown/crepe": "^7.21.1",
-    "@milkdown/kit": "^7.21.1",
+    "@milkdown/crepe": "^7.21.2",
+    "@milkdown/kit": "^7.21.2",
     "@wailsio/runtime": "latest",
     "vue": "^3.2.45"
   },
